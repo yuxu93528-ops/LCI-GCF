@@ -1,4 +1,4 @@
-torch
-torchaudio
-soundfile
+﻿torch
 numpy
+soundfile
+scipy

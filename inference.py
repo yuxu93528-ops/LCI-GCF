@@ -1,11 +1,14 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
+from math import gcd
 from pathlib import Path
 
+import numpy as np
+import soundfile as sf
 import torch
-import torchaudio
+from scipy.signal import resample_poly
 
 
 SAMPLE_RATE = 16000
@@ -22,20 +25,26 @@ def load_labels(path: Path) -> dict[str, int]:
     return {str(k): int(v) for k, v in labels.items()}
 
 
-def load_wav(path: Path) -> torch.Tensor:
-    wav, sr = torchaudio.load(str(path))
-    wav = wav.float()
-    if wav.size(0) > 1:
-        wav = wav.mean(dim=0, keepdim=True)
-    if sr != SAMPLE_RATE:
-        wav = torchaudio.functional.resample(wav, sr, SAMPLE_RATE)
-    wav = wav.squeeze(0)
+def resample_audio(wav: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
+    if orig_sr == target_sr:
+        return wav
+    factor = gcd(orig_sr, target_sr)
+    up = target_sr // factor
+    down = orig_sr // factor
+    return resample_poly(wav, up, down).astype(np.float32, copy=False)
 
-    if wav.numel() < DEMO_LENGTH:
-        wav = torch.nn.functional.pad(wav, (0, DEMO_LENGTH - wav.numel()))
-    elif wav.numel() > DEMO_LENGTH:
+
+def load_wav(path: Path) -> torch.Tensor:
+    wav, sr = sf.read(str(path), always_2d=True, dtype="float32")
+    wav = wav.mean(axis=1)
+    wav = resample_audio(wav, sr, SAMPLE_RATE)
+
+    if wav.shape[0] < DEMO_LENGTH:
+        wav = np.pad(wav, (0, DEMO_LENGTH - wav.shape[0]))
+    elif wav.shape[0] > DEMO_LENGTH:
         wav = wav[:DEMO_LENGTH]
-    return wav
+
+    return torch.from_numpy(np.ascontiguousarray(wav)).float()
 
 
 def make_label(label_name: str, labels: dict[str, int]) -> torch.Tensor:
@@ -53,8 +62,8 @@ def make_label(label_name: str, labels: dict[str, int]) -> torch.Tensor:
 
 def save_wav(path: Path, wav: torch.Tensor) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    wav = wav.detach().cpu().float().view(1, -1).clamp(-1.0, 1.0)
-    torchaudio.save(str(path), wav, SAMPLE_RATE)
+    wav = wav.detach().cpu().float().view(-1).clamp(-1.0, 1.0).numpy()
+    sf.write(str(path), wav, SAMPLE_RATE)
 
 
 def main() -> None:
