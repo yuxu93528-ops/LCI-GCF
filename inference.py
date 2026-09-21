@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -67,11 +67,11 @@ def save_wav(path: Path, wav: torch.Tensor) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ALC-GCF inference-only demo")
+    parser = argparse.ArgumentParser(description="LCI-GCF inference-only demo")
     parser.add_argument("--input", required=True, type=Path, help="Path to an input mixture wav.")
     parser.add_argument("--label", required=True, type=str, help="Target class name, e.g., Snare_drum.")
     parser.add_argument("--output", required=True, type=Path, help="Path to save the extracted wav.")
-    parser.add_argument("--model", default=Path("checkpoints/alc_gcf_demo.pt"), type=Path)
+    parser.add_argument("--model", default=Path("checkpoints/lci_gcf_demo.pt"), type=Path)
     parser.add_argument("--labels", default=Path("labels.json"), type=Path)
     parser.add_argument("--cuda", action="store_true", help="Use CUDA if available. CPU is used by default.")
     args = parser.parse_args()
@@ -93,3 +93,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
